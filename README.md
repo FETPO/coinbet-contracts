@@ -1,11 +1,8 @@
-# Token Vesting Contract
+# Blockchain Betting Protocol powered by Chainlink VRF
 
 ## Overview
 
-On-Chain ERC20 token vesting enabled by smart contracts.
-
-`RevocableVesting` contract can release its token balance for a specified number of epochs and epoch duration.
-Optionally revocable by provided controller.
+Blockchain betting protocol with liquidity providing rewards pools for generating yield.
 
 ### Installation
 
