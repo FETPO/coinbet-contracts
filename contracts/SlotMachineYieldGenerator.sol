@@ -119,7 +119,6 @@ contract SlotMachineYieldGenerator is
         external
         payable
         whenNotPaused
-        onlyEpochNotEnded
     {
         userBalance[user] += msg.value;
         emit Deposit(user, msg.value);
@@ -129,7 +128,6 @@ contract SlotMachineYieldGenerator is
         external
         nonReentrant
         whenNotPaused
-        onlyEpochNotEnded
     {
         require(
             userBalance[_msgSender()] >= amount,
@@ -211,7 +209,6 @@ contract SlotMachineYieldGenerator is
 
     function withdrawProtocolFees()
         external
-        onlyEpochNotEnded
         returns (uint256 amount)
     {
         amount = protocolRewardsBalance;

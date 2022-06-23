@@ -15,7 +15,7 @@ async function main() {
   );
 
   await slotMachineYieldGenerator.deployed();
-  console.log(`Slot Machine deployed to: https://testnet.bscscan.com/address/${slotMachine.address}`);
+  console.log(`Slot Machine deployed to: https://testnet.bscscan.com/address/${slotMachineYieldGenerator.address}`);
 
 }
 
