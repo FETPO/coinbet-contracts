@@ -1,7 +1,9 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
 require('hardhat-abi-exporter');
-require('dotenv').config()
+require('dotenv').config();
+require("solidity-coverage");
+require('hardhat-contract-sizer');
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -49,7 +51,7 @@ module.exports = {
     apiKey: process.env.ETHERSCAN_API_KEY
   },
   solidity: {
-    version: "0.8.14",
+    version: "0.8.15",
     settings: {
       optimizer: {
         enabled: true,
