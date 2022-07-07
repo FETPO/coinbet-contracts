@@ -6,11 +6,12 @@ async function main() {
   const SlotMachineYieldGenerator = await hre.ethers.getContractFactory("SlotMachineYieldGenerator");
   const slotMachineYieldGenerator = await SlotMachineYieldGenerator.deploy(
     process.env.ROLL_PRICE,
-    process.env.PROTOCOL_FEE_BPS,
-    process.env.EPOCH_SECONDS,
-    process.env.EPOCH_STARTED_AT,
     process.env.EXIT_FEE_BPS,
     process.env.SUBSCRIPTION_ID,
+    process.env.KEY_HASH,
+    process.env.CALLBACK_GAS_LIMIT,
+    process.env.VRF_REQUEST_CONFIRMATIONS,
+    process.env.NUM_WORDS,
     process.env.VRF_COORDINATOR
   );
 

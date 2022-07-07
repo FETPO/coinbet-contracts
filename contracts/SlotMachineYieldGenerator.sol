@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-// An example of a consumer contract that relies on a subscription for funding.
 pragma solidity 0.8.15;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -22,64 +21,231 @@ contract SlotMachineYieldGenerator is
     using Math for uint256;
     using Address for address;
 
+    /* ========== STATE VARIABLES ========== */
+
     uint256 public rollPrice;
+    uint256 public exitFeeBps;
     uint256 public rewardPoolBalance;
-    uint256 public protocolFee;
     uint256 public protocolRewardsBalance;
 
-    uint256 public epochSeconds;
-    uint256 public epochStartedAt;
-    uint256 public exitFee;
-    uint256 public rewardPoolBalanceAtEpochEnd;
-
-    mapping(address => uint256) public depositTimestamp;
     mapping(address => uint256) public userBalance;
     mapping(uint256 => address) public userRequestId;
 
-    event Roll(
-        uint256 first,
-        uint256 second,
-        uint256 third,
-        uint256 reward,
-        uint256 requestId
-    );
-    event Deposit(address depositorAddress, uint256 depositAmount);
-    event Withdraw(address requestorAddress, uint256 withdrawAmount);
-    event EpochEnd(uint256 endTime, uint256 protocolReward);
-    event LiquidityAdded(uint256 amount, uint256 liquidity);
-    event LiquidityRemoved(uint256 amount, uint256 liquidity);
-
-    modifier onlyEpochNotEnded() {
-        require(
-            block.timestamp < epochEndAt(),
-            "Slot Mahchine: Current epoch has ended"
-        );
-        _;
-    }
+    /* ========== CONSTRUCTOR ========== */
 
     constructor(
         uint256 _rollPrice,
-        uint256 _protocolFee,
-        uint256 _epochSeconds,
-        uint256 _epochStartedAt,
-        uint256 _exitFee,
+        uint256 _exitFeeBps,
         uint64 _subscriptionId,
+        bytes32 _keyHash,
+        uint32 _callbackGasLimit,
+        uint16 _requestConfirmations,
+        uint32 _numWords,
         address _vrfCordinator
     )
-        VRFv2Consumer(_subscriptionId, _vrfCordinator)
-        ERC20("Coinbet Liquidity Provider Token", "C_LPT")
+        VRFv2Consumer(
+            _subscriptionId,
+            _keyHash,
+            _callbackGasLimit,
+            _requestConfirmations,
+            _numWords,
+            _vrfCordinator
+        )
+        ERC20("Coinbet Rewards Provider Token", "CRPT")
     {
         rollPrice = _rollPrice;
-        protocolFee = _protocolFee;
-        epochSeconds = _epochSeconds;
-        epochStartedAt = _epochStartedAt;
-        exitFee = _exitFee;
-        s_subscriptionId = _subscriptionId;
+        exitFeeBps = _exitFeeBps;
     }
 
-    // Assumes the subscription is funded sufficiently.
+    /* ========== VIEWS ========== */
+
+    /// @notice Checks whether all conditions are met, before a roll is executed.
+    function _beforeRollExecution() internal view {
+        require(
+            !address(_msgSender()).isContract(),
+            "Slot Machine: Caller cannot be a contract"
+        );
+        require(
+            _msgSender() == tx.origin,
+            "Slot Machine: Msg sender should be original caller"
+        );
+        require(
+            userBalance[_msgSender()] >= rollPrice,
+            "Slot Machine: Not enough funds"
+        );
+        require(
+            rewardPoolBalance > rollPrice * 30,
+            "Slot Machine: Not enough to pay max payout"
+        );
+    }
+
+    /// TODO: Add different battle-tested logic for reward calculation
+    /// @notice Calculates the current reward, based on the rollPrice and random values returned from Chainlink.
+    /// @param slotRollPrice The roll price.
+    /// @param firstRandom The first random number received.
+    /// @param secondRandom The second random number received.
+    /// @param thirdRandom The third random number received.
+    function _calculateReward(
+        uint256 slotRollPrice,
+        uint256 firstRandom,
+        uint256 secondRandom,
+        uint256 thirdRandom
+    ) internal pure returns (uint256) {
+        if (firstRandom == 6 && secondRandom == 6 && thirdRandom == 6) {
+            return slotRollPrice * 30;
+        } else if (firstRandom == 5 && secondRandom == 5 && thirdRandom == 5) {
+            return slotRollPrice * 20;
+        } else if (firstRandom == 4 && secondRandom == 4 && thirdRandom == 4) {
+            return slotRollPrice * 15;
+        } else if (firstRandom == 3 && secondRandom == 3 && thirdRandom == 3) {
+            return slotRollPrice * 12;
+        } else if (firstRandom == 2 && secondRandom == 2 && thirdRandom == 2) {
+            return slotRollPrice * 10;
+        } else if (firstRandom == 1 && secondRandom == 1 && thirdRandom == 1) {
+            return slotRollPrice * 5;
+        } else if (
+            (firstRandom == secondRandom) ||
+            (firstRandom == thirdRandom) ||
+            (secondRandom == thirdRandom)
+        ) {
+            return slotRollPrice;
+        } else {
+            return 0;
+        }
+    }
+
+    /* ========== MUTATIVE FUNCTIONS ========== */
+
+    /// @notice Deposits funds to an address, which can execute rolls.
+    /// @param user The address of the user which will use the funds to play.
+    function depositPlayerFunds(address user)
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+    {
+        userBalance[user] += msg.value;
+
+        emit DepositPlayerFunds(user, msg.value);
+    }
+
+    /// @notice Withdraws user funds, which were depoisted for playing.
+    /// @param amount The amount which the user withdraws.
+    function withdrawPlayerFunds(uint256 amount)
+        external
+        nonReentrant
+        whenNotPaused
+    {
+        require(
+            userBalance[_msgSender()] >= amount,
+            "Slot Machine: Not enough funds"
+        );
+        userBalance[_msgSender()] -= amount;
+
+        (bool success, ) = _msgSender().call{value: amount}("");
+        require(success, "Slot Machine: Withdrawal failed");
+
+        emit WithdrawPlayerFunds(_msgSender(), amount);
+    }
+
+    /// @notice Executes a slot machine roll by player, who has enough balance.
+    function executeRoll() external nonReentrant whenNotPaused {
+        _beforeRollExecution();
+        userBalance[_msgSender()] -= rollPrice;
+        rewardPoolBalance += rollPrice;
+        uint256 requestId = requestRandomWords();
+        userRequestId[requestId] = _msgSender();
+    }
+
+    /// @notice Adds liquidity used for paying rewards to player and accumulating rewards from players rolls.
+    /// ERC20 token is minted, which represents a percantage of the total pool.
+    function addRewardsLiquidity()
+        external
+        payable
+        nonReentrant
+        whenNotPaused
+        returns (uint256 liquidity)
+    {
+        uint256 _totalSupply = totalSupply();
+        uint256 _reserve = rewardPoolBalance;
+        uint256 amount = msg.value;
+
+        if (_totalSupply == 0) {
+            liquidity = (((amount / 2) * (amount / 2))).sqrt();
+        } else {
+            liquidity = (amount * _totalSupply) / _reserve;
+        }
+
+        rewardPoolBalance += amount;
+
+        require(liquidity > 0, "Slot Machine: Insuffcient Liquidity Minted");
+        _mint(_msgSender(), liquidity);
+
+        emit RewardsLiquidityAdded(amount, liquidity, _msgSender());
+    }
+
+    /// @notice Removes liquidity used for paying rewards to player and accumulating rewards from players rolls.
+    /// ERC20 token is burned, which represents a percantage of the total pool.
+    function removeRewardsLiquidity(uint256 liquidity)
+        external
+        nonReentrant
+        whenNotPaused
+        returns (uint256 amount)
+    {
+        _transfer(_msgSender(), address(this), liquidity);
+
+        uint256 balance = rewardPoolBalance;
+        uint256 _totalSupply = totalSupply();
+
+        amount = (liquidity * balance) / _totalSupply;
+
+        require(amount > 0, "Slot Machine: Insuffcient Liquidity Burned");
+
+        _burn(address(this), liquidity);
+
+        uint256 _exitFee = (exitFeeBps * amount) / 10000;
+
+        (bool success, ) = _msgSender().call{value: (amount - _exitFee)}("");
+        require(success, "Slot Machine: Withdrawal Failed");
+
+        rewardPoolBalance -= amount;
+        protocolRewardsBalance += _exitFee;
+
+        emit RewardsLiquidityRemoved(amount, liquidity, _msgSender());
+    }
+
+    /// @notice Withdraws aggregated protocol fees to the owner of the contract.
+    function withdrawProtocolFees()
+        external
+        nonReentrant
+        onlyOwner
+        returns (uint256 amount)
+    {
+        amount = protocolRewardsBalance;
+        protocolRewardsBalance = 0;
+        (bool success, ) = owner().call{value: amount}("");
+        require(success, "Slot Machine: Withdrawal Failed");
+    }
+
+    /// @notice Updates the roll price for playing.
+    /// @param newRollPrice The new roll price.
+    function updateRollPrice(uint256 newRollPrice) external onlyOwner {
+        rollPrice = newRollPrice;
+
+        emit RollPriceUpdated(newRollPrice);
+    }
+
+    /// @notice Updates the exit fee for withdrawing rewards liquidity.
+    /// @param newExitFeeBps The new exit fee in basis points.
+    function updateExitFeeBps(uint256 newExitFeeBps) external onlyOwner {
+        exitFeeBps = newExitFeeBps;
+
+        emit ExitFeeUpdated(newExitFeeBps);
+    }
+
+    /// @notice Requests randomness from Chainlink. Called inside executeRoll.
+    /// Assumes the subscription is funded sufficiently.
     function requestRandomWords() internal returns (uint256 _userRequestId) {
-        // Will revert if subscription is not set and funded.
         _userRequestId = COORDINATOR.requestRandomWords(
             keyHash,
             s_subscriptionId,
@@ -89,11 +255,16 @@ contract SlotMachineYieldGenerator is
         );
     }
 
+    /// @notice Callback function, executed by Chainlink's VRF Coordinator contract.
+    /// @param requestId The respective request id.
+    /// @param randomWords Array of random numbers fulfilled.
     function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords)
         internal
         override
     {
-        uint256 reward = rollPrice.calculateReward(
+        uint256 _rollPrice = rollPrice;
+        uint256 reward = _calculateReward(
+            _rollPrice,
             (randomWords[0] % 6) + 1,
             (randomWords[1] % 6) + 1,
             (randomWords[2] % 6) + 1
@@ -115,176 +286,30 @@ contract SlotMachineYieldGenerator is
         );
     }
 
-    function depositFunds(address user)
-        external
-        payable
-        whenNotPaused
-    {
-        userBalance[user] += msg.value;
-        emit Deposit(user, msg.value);
-    }
+    /* ========== EVENTS ========== */
 
-    function withdrawFunds(uint256 amount)
-        external
-        nonReentrant
-        whenNotPaused
-    {
-        require(
-            userBalance[_msgSender()] >= amount,
-            "Slot Machine: Not enough funds"
-        );
-        userBalance[_msgSender()] -= amount;
-
-        (bool success, ) = _msgSender().call{value: amount}("");
-        require(success, "Slot Machine: Withdrawal failed");
-
-        emit Withdraw(_msgSender(), amount);
-    }
-
-    function executeRoll()
-        external
-        nonReentrant
-        whenNotPaused
-        onlyEpochNotEnded
-    {
-        _beforeRollExecution();
-        userBalance[_msgSender()] -= rollPrice;
-        rewardPoolBalance += rollPrice;
-        uint256 requestId = requestRandomWords();
-        userRequestId[requestId] = _msgSender();
-    }
-
-    function addLiquidity()
-        external
-        payable
-        onlyEpochNotEnded
-        returns (uint256 liquidity)
-    {
-        uint256 _totalSupply = totalSupply();
-        uint256 _reserve = rewardPoolBalance;
-        uint256 amount = msg.value;
-
-        if (_totalSupply == 0) {
-            liquidity = (((amount / 2) * (amount)) / 2).sqrt();
-        } else {
-            liquidity = (amount * _totalSupply) / _reserve;
-        }
-
-        rewardPoolBalance += amount;
-        depositTimestamp[msg.sender] = block.timestamp;
-
-        require(liquidity > 0, "Slot Machine: Insuffcient Liquidity Minted");
-        _mint(_msgSender(), liquidity);
-        emit LiquidityAdded(amount, liquidity);
-    }
-
-    function removeLiquidity(uint256 liquidity)
-        external
-        onlyEpochNotEnded
-        returns (uint256 amount)
-    {
-        _transfer(_msgSender(), address(this), liquidity);
-
-        uint256 balance = rewardPoolBalance;
-        uint256 _totalSupply = totalSupply();
-
-        amount = (liquidity * balance) / _totalSupply;
-
-        require(amount > 0, "Slot Machine: Insuffcient Liquidity Burned");
-
-        _burn(address(this), liquidity);
-
-        uint256 _exitFee = calculateLiquidityWithdrawalFee(
-            amount,
-            _msgSender()
-        );
-
-        (bool success, ) = _msgSender().call{value: (amount - _exitFee)}("");
-        require(success, "Slot Machine: Withdrawal Failed");
-
-        rewardPoolBalance -= amount;
-        protocolRewardsBalance += _exitFee;
-        emit LiquidityRemoved(amount, liquidity);
-    }
-
-    function withdrawProtocolFees()
-        external
-        returns (uint256 amount)
-    {
-        amount = protocolRewardsBalance;
-        protocolRewardsBalance = 0;
-        (bool success, ) = owner().call{value: amount}("");
-        require(success, "Slot Machine: Withdrawal Failed");
-    }
-
-    function finalizeEpoch() public {
-        require(hasEpochEnded(), "Slot Machine: Epoch has not ended");
-
-        uint256 beginningBalance = rewardPoolBalanceAtEpochEnd;
-        uint256 endBalance = rewardPoolBalance;
-        uint256 protocolReward = 0;
-
-        if (endBalance > beginningBalance) {
-            protocolReward =
-                ((endBalance - beginningBalance) * protocolFee) /
-                10000;
-            rewardPoolBalance -= protocolReward;
-            protocolRewardsBalance += protocolReward;
-        }
-
-        rewardPoolBalanceAtEpochEnd = rewardPoolBalance;
-        epochStartedAt = calculateNextEpochStartTime(block.timestamp);
-        emit EpochEnd(epochStartedAt, protocolReward);
-    }
-
-    function _beforeRollExecution() internal view {
-        require(
-            !address(_msgSender()).isContract(),
-            "Slot Machine: Caller cannot be a contract"
-        );
-        require(
-            _msgSender() == tx.origin,
-            "Slot Machine: Msg sender should be original caller"
-        );
-        require(
-            userBalance[_msgSender()] >= rollPrice,
-            "Slot Machine: Not enough funds"
-        );
-        require(
-            rewardPoolBalance > rollPrice * 30,
-            "Slot Machine: Not enough to pay max payout"
-        );
-    }
-
-    function epochEndAt() public view returns (uint256) {
-        return epochStartedAt + epochSeconds;
-    }
-
-    function hasEpochEnded() public view returns (bool) {
-        return block.timestamp >= epochEndAt();
-    }
-
-    function calculateLiquidityWithdrawalFee(uint256 amount, address owner)
-        internal
-        view
-        returns (uint256 withdrawalFee)
-    {
-        uint256 epochStartTime = epochStartedAt;
-        uint256 depositedAt = depositTimestamp[owner];
-
-        if (epochStartTime > depositedAt) {
-            withdrawalFee = 0;
-        } else {
-            withdrawalFee = (exitFee * amount) / 10000;
-        }
-    }
-
-    function calculateNextEpochStartTime(uint256 currentTime)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 elapsedEpochs = (currentTime - epochStartedAt) / epochSeconds;
-        return epochStartedAt + (elapsedEpochs * epochSeconds);
-    }
+    event Roll(
+        uint256 first,
+        uint256 second,
+        uint256 third,
+        uint256 reward,
+        uint256 requestId
+    );
+    event DepositPlayerFunds(address depositorAddress, uint256 depositAmount);
+    event WithdrawPlayerFunds(
+        address withdrawalAddress,
+        uint256 withdrawAmount
+    );
+    event RewardsLiquidityAdded(
+        uint256 amount,
+        uint256 liquidity,
+        address providerAddress
+    );
+    event RewardsLiquidityRemoved(
+        uint256 amount,
+        uint256 liquidity,
+        address providerAddress
+    );
+    event RollPriceUpdated(uint256 newRollPrice);
+    event ExitFeeUpdated(uint256 newExitFeeBps);
 }

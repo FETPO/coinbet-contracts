@@ -1,5 +1,5 @@
 {
-  "name": "degen-slots",
+  "name": "coinbet-finance",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -7,10 +7,11 @@
     "compile": "npx hardhat compile",
     "deploy": "npx hardhat run scripts/deploy.js --network",
     "etherscan-verify": "npx hardhat verify --network",
-    "test": "npx hardhat test"
+    "test": "npx hardhat test",
+    "coverage": "npx hardhat coverage"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Stanislav Trenev <stanislav.trenev@gmail.com>",
+  "license": "MIT",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^2.1.5",

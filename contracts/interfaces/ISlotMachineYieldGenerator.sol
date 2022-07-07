@@ -3,15 +3,15 @@
 pragma solidity 0.8.15;
 
 interface ISlotMachineYieldGenerator {
-    function depositFunds(address user) external payable;
+    function depositPlayerFunds(address user) external payable;
 
-    function withdrawFunds(uint256 amount) external;
+    function withdrawPlayerFunds(uint256 amount) external;
 
     function executeRoll() external;
 
-    function addLiquidity() external payable returns (uint256 liquidity);
+    function addRewardsLiquidity() external payable returns (uint256 liquidity);
 
-    function removeLiquidity(uint256 liquidity)
+    function removeRewardsLiquidity(uint256 liquidity)
         external
         returns (uint256 amount);
 }
