@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
@@ -25,6 +25,8 @@ contract SlotMachineYieldGenerator is
 
     uint256 public rollPrice;
     uint256 public exitFeeBps;
+    uint256 public rollFeeBps;
+    uint256 public rewardPoolMaxCap;
     uint256 public rewardPoolBalance;
     uint256 public protocolRewardsBalance;
 
@@ -36,6 +38,8 @@ contract SlotMachineYieldGenerator is
     constructor(
         uint256 _rollPrice,
         uint256 _exitFeeBps,
+        uint256 _rollFeeBps,
+        uint256 _rewardPoolMaxCap,
         uint64 _subscriptionId,
         bytes32 _keyHash,
         uint32 _callbackGasLimit,
@@ -55,6 +59,8 @@ contract SlotMachineYieldGenerator is
     {
         rollPrice = _rollPrice;
         exitFeeBps = _exitFeeBps;
+        rollFeeBps = _rollFeeBps;
+        rewardPoolMaxCap = _rewardPoolMaxCap;
     }
 
     /* ========== VIEWS ========== */
@@ -151,8 +157,14 @@ contract SlotMachineYieldGenerator is
     /// @notice Executes a slot machine roll by player, who has enough balance.
     function executeRoll() external nonReentrant whenNotPaused {
         _beforeRollExecution();
-        userBalance[_msgSender()] -= rollPrice;
-        rewardPoolBalance += rollPrice;
+
+        uint256 _rollPrice = rollPrice;
+        uint256 _rollFee = (rollFeeBps * _rollPrice) / 10000;
+
+        userBalance[_msgSender()] -= _rollPrice;
+        rewardPoolBalance += (_rollPrice - _rollFee);
+        protocolRewardsBalance += _rollFee;
+
         uint256 requestId = requestRandomWords();
         userRequestId[requestId] = _msgSender();
     }
@@ -169,6 +181,11 @@ contract SlotMachineYieldGenerator is
         uint256 _totalSupply = totalSupply();
         uint256 _reserve = rewardPoolBalance;
         uint256 amount = msg.value;
+
+        require(
+            _reserve + amount <= rewardPoolMaxCap,
+            "Slot Machine: Reward Pool Max Cap Exceeded"
+        );
 
         if (_totalSupply == 0) {
             liquidity = (((amount / 2) * (amount / 2))).sqrt();
@@ -243,6 +260,22 @@ contract SlotMachineYieldGenerator is
         emit ExitFeeUpdated(newExitFeeBps);
     }
 
+    /// @notice Updates the reward pool max cap.
+    /// @param newMaxCap The new max cap in wei.
+    function updateRewardPoolMaxCap(uint256 newMaxCap) external onlyOwner {
+        rewardPoolMaxCap = newMaxCap;
+
+        emit RewardPoolMaxCapUpdated(newMaxCap);
+    }
+
+    /// @notice Updates the roll fee deducted on every roll.
+    /// @param newRollFeeBps The new roll fee in basis points.
+    function updateRollFeeBps(uint256 newRollFeeBps) external onlyOwner {
+        rollFeeBps = newRollFeeBps;
+
+        emit RollFeeUpdated(newRollFeeBps);
+    }
+
     /// @notice Requests randomness from Chainlink. Called inside executeRoll.
     /// Assumes the subscription is funded sufficiently.
     function requestRandomWords() internal returns (uint256 _userRequestId) {
@@ -263,8 +296,10 @@ contract SlotMachineYieldGenerator is
         override
     {
         uint256 _rollPrice = rollPrice;
+        uint256 _rollFee = (rollFeeBps * _rollPrice) / 10000;
+
         uint256 reward = _calculateReward(
-            _rollPrice,
+            (_rollPrice - _rollFee),
             (randomWords[0] % 6) + 1,
             (randomWords[1] % 6) + 1,
             (randomWords[2] % 6) + 1
@@ -312,4 +347,6 @@ contract SlotMachineYieldGenerator is
     );
     event RollPriceUpdated(uint256 newRollPrice);
     event ExitFeeUpdated(uint256 newExitFeeBps);
+    event RewardPoolMaxCapUpdated(uint256 newMaxCap);
+    event RollFeeUpdated(uint256 newRollFeeBps);
 }

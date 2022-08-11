@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // An example of a consumer contract that relies on a subscription for funding.
-pragma solidity 0.8.15;
+pragma solidity 0.8.16;
 
 interface ISlotMachineYieldGenerator {
     function depositPlayerFunds(address user) external payable;

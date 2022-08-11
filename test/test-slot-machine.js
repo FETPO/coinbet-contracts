@@ -5,6 +5,8 @@ const { loadFixture } = waffle;
 
 const ROLL_PRICE = "10000000000000000";
 const EXIT_FEE_BPS = "500";
+const ROLL_FEE_BPS = "200";
+const REWARD_POOL_MAX_CAP = "100000000000000000000";
 const SUBSCRIPTION_ID = "0";
 const KEY_HASH = "0xd4bb89654db74673a187bd804519e65e3f71a52bc55f11da7601a13dcf505314";
 const CALLBACK_GAS_LIMIT = "2400000";
@@ -21,6 +23,8 @@ describe("Slot Machine Tests", () => {
     const slotMachineYieldGenerator = await SlotMachineYieldGenerator.deploy(
       ROLL_PRICE,
       EXIT_FEE_BPS,
+      ROLL_FEE_BPS,
+      REWARD_POOL_MAX_CAP,
       SUBSCRIPTION_ID,
       KEY_HASH,
       CALLBACK_GAS_LIMIT,
@@ -104,6 +108,15 @@ describe("Slot Machine Tests", () => {
     expect(
       await slotMachineYieldGenerator.connect(accounts[0]).addRewardsLiquidity({ value: "2000000000000000000" })
     ).to.be.emit(slotMachineYieldGenerator, "RewardsLiquidityAdded");
+  });
+
+  it("should NOT be able to provide liquidity above max cap", async () => {
+    const { slotMachineYieldGenerator } = await loadFixture(deployedContracts);
+    const accounts = await ethers.getSigners();
+
+    await expect(
+      slotMachineYieldGenerator.connect(accounts[0]).addRewardsLiquidity({ value: "100000000000000000001" })
+    ).revertedWith("Slot Machine: Reward Pool Max Cap Exceeded");
   });
 
   it("should successfully mint LP Rewards Token after liquidity is provided", async () => {
@@ -215,6 +228,39 @@ describe("Slot Machine Tests", () => {
     expect(newExitFeeBps).to.equal("1000");
   });
 
+  it("Only owner should successfully update roll fee", async () => {
+    const { slotMachineYieldGenerator } = await loadFixture(deployedContracts);
+    const accounts = await ethers.getSigners();
+
+    await expect(slotMachineYieldGenerator.connect(accounts[1]).updateRollFeeBps("1000")).revertedWith(
+      "Ownable: caller is not the owner"
+    );
+
+    expect(await slotMachineYieldGenerator.connect(accounts[0]).updateRollFeeBps("1000")).to.be.emit(
+      slotMachineYieldGenerator,
+      "RollFeeUpdated"
+    );
+
+    const newRollFeeBps = await slotMachineYieldGenerator.rollFeeBps();
+    expect(newRollFeeBps).to.equal("1000");
+  });
+
+  it("Only owner should successfully update reward pool max cap", async () => {
+    const { slotMachineYieldGenerator } = await loadFixture(deployedContracts);
+    const accounts = await ethers.getSigners();
+
+    await expect(
+      slotMachineYieldGenerator.connect(accounts[1]).updateRewardPoolMaxCap("1000000000000000000")
+    ).revertedWith("Ownable: caller is not the owner");
+
+    expect(
+      await slotMachineYieldGenerator.connect(accounts[0]).updateRewardPoolMaxCap("2000000000000000000")
+    ).to.be.emit(slotMachineYieldGenerator, "RewardPoolMaxCapUpdated");
+
+    const newRewardPoolMaxCap = await slotMachineYieldGenerator.rewardPoolMaxCap();
+    expect(newRewardPoolMaxCap).to.equal("2000000000000000000");
+  });
+
   it("should NOT execute roll if there are not enough funds to pay the highest possible prize", async () => {
     const { slotMachineYieldGenerator } = await loadFixture(deployedContracts);
     const accounts = await ethers.getSigners();
@@ -278,7 +324,7 @@ describe("Slot Machine Tests", () => {
     // Using address zero as recipient, because callback in mock is executed before requestId is returned.
     // TODO: Refactor Mock VRF Coordinator callback
     const userBalance = await slotMachineYieldGenerator.userBalance(ADDRESS_ZERO);
-    expect(userBalance).to.equal("120000000000000000");
+    expect(userBalance).to.equal("117600000000000000");
   });
 
   it("should successfully update reward pool balance if roll is lost", async () => {
@@ -302,7 +348,7 @@ describe("Slot Machine Tests", () => {
     expect(userBalance).to.equal("90000000000000000");
 
     const rewardPoolBalance = await slotMachineYieldGenerator.rewardPoolBalance();
-    expect(rewardPoolBalance).to.equal("1010000000000000000");
+    expect(rewardPoolBalance).to.equal("1009800000000000000");
   });
 
   it("should calculate properly the total LP percentage of the pool when providing liquidity ", async () => {
@@ -336,5 +382,29 @@ describe("Slot Machine Tests", () => {
 
     const lpTokenBalance4 = await slotMachineYieldGenerator.balanceOf(accounts[3].address);
     expect(lpTokenBalance4).to.equal("1000000000000000000");
+  });
+
+  it("should successfully deduct roll fee on roll execution", async () => {
+    const { slotMachineYieldGenerator, mockVRFCoordinator } = await loadFixture(deployedContracts);
+    const accounts = await ethers.getSigners();
+
+    await mockVRFCoordinator.setCombination(0);
+
+    await slotMachineYieldGenerator.connect(accounts[0]).addRewardsLiquidity({ value: "1000000000000000000" });
+
+    await slotMachineYieldGenerator
+      .connect(accounts[1])
+      .depositPlayerFunds(accounts[1].address, { value: "100000000000000000" });
+
+    expect(await slotMachineYieldGenerator.connect(accounts[1]).executeRoll()).to.be.emit(
+      slotMachineYieldGenerator,
+      "Roll"
+    );
+
+    const userBalance = await slotMachineYieldGenerator.userBalance(accounts[1].address);
+    expect(userBalance).to.equal("90000000000000000");
+
+    const rewardPoolBalance = await slotMachineYieldGenerator.rewardPoolBalance();
+    expect(rewardPoolBalance).to.equal("1009800000000000000");
   });
 });
