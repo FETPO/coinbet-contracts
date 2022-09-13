@@ -38,6 +38,11 @@ module.exports = {
         url: "https://data-seed-prebsc-1-s1.binance.org:8545",
         accounts: [process.env.WALLET_PK]
       },
+      mumbai: {
+        chainId: 80001 ,
+        url: `https://polygon-mumbai.infura.io/v3/${process.env.INFURA_API_KEY}`,
+        accounts: [process.env.WALLET_PK]
+      },
       hardhat: {
         accounts: {
           count: 150,
@@ -51,7 +56,7 @@ module.exports = {
     apiKey: process.env.ETHERSCAN_API_KEY
   },
   solidity: {
-    version: "0.8.16",
+    version: "0.8.17",
     settings: {
       optimizer: {
         enabled: true,
