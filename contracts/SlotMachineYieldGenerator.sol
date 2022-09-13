@@ -1,24 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/ISlotMachineYieldGenerator.sol";
 import "./VRFv2Consumer.sol";
-import "./lib/Math.sol";
 
 contract SlotMachineYieldGenerator is
     ISlotMachineYieldGenerator,
     VRFv2Consumer,
     ERC20,
-    ReentrancyGuard,
     Ownable,
     Pausable
 {
-    using Math for uint256;
     using Address for address;
 
     /* ========== STATE VARIABLES ========== */
@@ -127,7 +123,6 @@ contract SlotMachineYieldGenerator is
     function depositPlayerFunds(address user)
         external
         payable
-        nonReentrant
         whenNotPaused
     {
         userBalance[user] += msg.value;
@@ -139,7 +134,6 @@ contract SlotMachineYieldGenerator is
     /// @param amount The amount which the user withdraws.
     function withdrawPlayerFunds(uint256 amount)
         external
-        nonReentrant
         whenNotPaused
     {
         require(
@@ -148,14 +142,14 @@ contract SlotMachineYieldGenerator is
         );
         userBalance[_msgSender()] -= amount;
 
+        emit WithdrawPlayerFunds(_msgSender(), amount);
+
         (bool success, ) = _msgSender().call{value: amount}("");
         require(success, "Slot Machine: Withdrawal failed");
-
-        emit WithdrawPlayerFunds(_msgSender(), amount);
     }
 
     /// @notice Executes a slot machine roll by player, who has enough balance.
-    function executeRoll() external nonReentrant whenNotPaused {
+    function executeRoll() external whenNotPaused {
         _beforeRollExecution();
 
         uint256 _rollPrice = rollPrice;
@@ -174,7 +168,6 @@ contract SlotMachineYieldGenerator is
     function addRewardsLiquidity()
         external
         payable
-        nonReentrant
         whenNotPaused
         returns (uint256 liquidity)
     {
@@ -205,7 +198,6 @@ contract SlotMachineYieldGenerator is
     /// ERC20 token is burned, which represents a percantage of the total pool.
     function removeRewardsLiquidity(uint256 liquidity)
         external
-        nonReentrant
         whenNotPaused
         returns (uint256 amount)
     {
@@ -234,12 +226,12 @@ contract SlotMachineYieldGenerator is
     /// @notice Withdraws aggregated protocol fees to the owner of the contract.
     function withdrawProtocolFees()
         external
-        nonReentrant
         onlyOwner
         returns (uint256 amount)
     {
         amount = protocolRewardsBalance;
         protocolRewardsBalance = 0;
+
         (bool success, ) = owner().call{value: amount}("");
         require(success, "Slot Machine: Withdrawal Failed");
     }
