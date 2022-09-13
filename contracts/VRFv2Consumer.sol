@@ -6,15 +6,15 @@ import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
 abstract contract VRFv2Consumer is VRFConsumerBaseV2 {
-    VRFCoordinatorV2Interface COORDINATOR;
+    VRFCoordinatorV2Interface immutable COORDINATOR;
 
     // Your subscription ID.
-    uint64 s_subscriptionId;
+    uint64 immutable s_subscriptionId;
 
     // The gas lane to use, which specifies the maximum gas price to bump to.
     // For a list of available gas lanes on each network,
     // see https://docs.chain.link/docs/vrf-contracts/#configurations
-    bytes32 keyHash;
+    bytes32 immutable keyHash;
 
     // Depends on the number of requested values that you want sent to the
     // fulfillRandomWords() function. Storing each word costs about 20,000 gas,
@@ -22,14 +22,14 @@ abstract contract VRFv2Consumer is VRFConsumerBaseV2 {
     // this limit based on the network that you select, the size of the request,
     // and the processing of the callback request in the fulfillRandomWords()
     // function.
-    uint32 callbackGasLimit;
+    uint32 immutable callbackGasLimit;
 
     // The default is 3, but you can set this higher.
-    uint16 requestConfirmations;
+    uint16 immutable requestConfirmations;
 
     // For this example, retrieve 2 random values in one request.
     // Cannot exceed VRFCoordinatorV2.MAX_NUM_WORDS.
-    uint32 numWords;
+    uint32 immutable numWords;
 
     constructor(
         uint64 _subscriptionId,
