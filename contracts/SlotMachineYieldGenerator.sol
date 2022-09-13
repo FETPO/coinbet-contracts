@@ -222,13 +222,13 @@ contract SlotMachineYieldGenerator is
 
         uint256 _exitFee = (exitFeeBps * amount) / 10000;
 
-        (bool success, ) = _msgSender().call{value: (amount - _exitFee)}("");
-        require(success, "Slot Machine: Withdrawal Failed");
-
         rewardPoolBalance -= amount;
         protocolRewardsBalance += _exitFee;
 
         emit RewardsLiquidityRemoved(amount, liquidity, _msgSender());
+
+        (bool success, ) = _msgSender().call{value: (amount - _exitFee)}("");
+        require(success, "Slot Machine: Withdrawal Failed");
     }
 
     /// @notice Withdraws aggregated protocol fees to the owner of the contract.
