@@ -188,7 +188,7 @@ contract SlotMachineYieldGenerator is
         );
 
         if (_totalSupply == 0) {
-            liquidity = (((amount / 2) * (amount / 2))).sqrt();
+            liquidity = amount / 2;
         } else {
             liquidity = (amount * _totalSupply) / _reserve;
         }
