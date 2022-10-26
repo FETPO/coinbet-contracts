@@ -4,6 +4,7 @@ require('hardhat-abi-exporter');
 require('dotenv').config();
 require("solidity-coverage");
 require('hardhat-contract-sizer');
+require("hardhat-gas-reporter");  
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -68,5 +69,8 @@ module.exports = {
     alphaSort: true,
     runOnCompile: true,
     disambiguatePaths: false,
+  },
+  gasReporter: {
+    enabled: true
   },
 };
