@@ -30,7 +30,7 @@ contract CoinbetHousePool is ICoinbetHousePool, ERC20, Ownable, Pausable {
 
     modifier onlyCoinbetGame() {
         require(
-            authorizedGames[_msgSender()] == true,
+            authorizedGames[_msgSender()],
             "Coinbet House Pool: Not called from the Coinbet Slot Machine!"
         );
         _;
@@ -156,10 +156,10 @@ contract CoinbetHousePool is ICoinbetHousePool, ERC20, Ownable, Pausable {
     {
         require(liquidity > 0, "Coinbet House Pool: Insuffcient Liquidity");
         uint256 balance = poolBalance;
-        uint256 _totalSupply = totalSupply();
+        uint256 _totalSupplyPoolToken = totalSupply();
 
         // slither-disable-next-line divide-before-multiply
-        amount = (liquidity * balance) / _totalSupply;
+        amount = (liquidity * balance) / _totalSupplyPoolToken;
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -172,7 +172,7 @@ contract CoinbetHousePool is ICoinbetHousePool, ERC20, Ownable, Pausable {
         whenNotPaused
         returns (uint256 liquidity)
     {
-        uint256 _totalSupply = totalSupply();
+        uint256 _totalSupplyPoolToken = totalSupply();
         uint256 _reserve = poolBalance;
         uint256 amount = msg.value;
 
@@ -181,10 +181,10 @@ contract CoinbetHousePool is ICoinbetHousePool, ERC20, Ownable, Pausable {
             "Coinbet House Pool: Reward Pool Max Cap Exceeded"
         );
 
-        if (_totalSupply == 0) {
+        if (_totalSupplyPoolToken == 0) {
             liquidity = amount / 2;
         } else {
-            liquidity = (amount * _totalSupply) / _reserve;
+            liquidity = (amount * _totalSupplyPoolToken) / _reserve;
         }
 
         poolBalance += amount;
@@ -209,10 +209,10 @@ contract CoinbetHousePool is ICoinbetHousePool, ERC20, Ownable, Pausable {
         _transfer(_msgSender(), address(this), liquidity);
 
         uint256 balance = poolBalance;
-        uint256 _totalSupply = totalSupply();
+        uint256 _totalSupplyPoolToken = totalSupply();
 
         // slither-disable-next-line divide-before-multiply
-        amount = (liquidity * balance) / _totalSupply;
+        amount = (liquidity * balance) / _totalSupplyPoolToken;
 
         require(amount > 0, "Coinbet House Pool: Insuffcient Liquidity Burned");
 

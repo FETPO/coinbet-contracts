@@ -315,7 +315,7 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
 
         // Check if there is enough liquidity to payout the pending bet or if bet is already settled
         if (
-            bet.isSettled == true ||
+            bet.isSettled ||
             housePool.availableFundsForPayroll() < winAmount
         ) {
             return;
@@ -365,7 +365,7 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
             "Coinbet Slots: Amount should be greater than zero"
         );
         require(
-            bet.isSettled == false,
+            !bet.isSettled,
             "Coinbet Slots: Bet is already settled"
         );
         require(
