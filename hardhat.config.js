@@ -44,10 +44,20 @@ module.exports = {
         url: `https://polygon-mumbai.infura.io/v3/${process.env.INFURA_API_KEY}`,
         accounts: [process.env.WALLET_PK]
       },
+      matic: {
+        chainId: 137,
+        url: `https://polygon-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
+        accounts: [process.env.WALLET_PK]
+      },
       hardhat: {
         accounts: {
           count: 150,
         },
+        mining: {
+          mempool: {
+            order: "fifo"
+          }
+        }
       }
     },
   etherscan: {

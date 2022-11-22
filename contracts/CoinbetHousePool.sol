@@ -147,6 +147,21 @@ contract CoinbetHousePool is ICoinbetHousePool, ERC20, Ownable, Pausable {
         }
     }
 
+    /// @notice Converts the LP token amount to staked token amount
+    /// @param liquidity The ERC20 LP token amount
+    function convertLiquidityToStakedToken(uint256 liquidity)
+        external
+        view
+        returns (uint256 amount)
+    {
+        require(liquidity > 0, "Coinbet House Pool: Insuffcient Liquidity");
+        uint256 balance = poolBalance;
+        uint256 _totalSupply = totalSupply();
+
+        // slither-disable-next-line divide-before-multiply
+        amount = (liquidity * balance) / _totalSupply;
+    }
+
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /// @notice Adds liquidity used for paying rewards to player and accumulating rewards from players rolls.

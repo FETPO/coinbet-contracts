@@ -39,16 +39,16 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
     /// @param betAmount The bet amount.
     modifier onlyValidBet(uint256 betAmount) {
         require(
-            minBetAmount <= betAmount && betAmount <= maxBetAmount,
-            "Coinbet Slot Machine: Invalid bet amount"
-        );
-        require(
             !address(_msgSender()).isContract(),
             "Coinbet Slot Machine: Caller cannot be a contract"
         );
         require(
             _msgSender() == tx.origin,
             "Coinbet Slot Machine: Msg sender should be original caller"
+        );
+        require(
+            minBetAmount <= betAmount && betAmount <= maxBetAmount,
+            "Coinbet Slot Machine: Invalid bet amount"
         );
         require(
             housePool.availableFundsForPayroll() >

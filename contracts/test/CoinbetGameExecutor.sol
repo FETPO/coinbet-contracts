@@ -10,7 +10,7 @@ contract CoinbetGameExecutor {
         coinbetGame = ICoinbetGame(coinbetGameAddress);
     }
 
-    function executeGameFromContract() public {
+    function executeGameFromContract() public payable {
         coinbetGame.coinbet();
     }
 }
