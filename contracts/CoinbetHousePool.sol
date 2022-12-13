@@ -12,7 +12,7 @@ contract CoinbetHousePool is ICoinbetHousePool, ERC20, Ownable, Pausable {
     uint256 public exitFeeBps;
     uint256 public poolMaxCap;
     uint256 public poolBalance;
-    uint256 public epochSeconds;
+    uint256 public immutable epochSeconds;
     uint256 public epochStartedAt;
     uint256 public maxBetToPoolRatio;
     uint256 public pendingBetsAmount;
@@ -23,7 +23,7 @@ contract CoinbetHousePool is ICoinbetHousePool, ERC20, Ownable, Pausable {
     uint256 public coinbetTokenFeeWaiverThreshold;
 
     bool public incentiveMode;
-    IERC20 public coinbetToken;
+    IERC20 public immutable coinbetToken;
 
     /// Mapping of addresses allowed to call the House Pool Contract
     mapping(address => bool) public authorizedGames;

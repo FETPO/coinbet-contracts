@@ -28,7 +28,7 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
     uint256 public coinbetTokenFeeWaiverThreshold;
 
     ICoinbetHousePool public housePool;
-    IERC20 public coinbetToken;
+    IERC20 public immutable coinbetToken;
 
     // mapping requestId => Bet
     mapping(uint256 => Bet) public userBets;
