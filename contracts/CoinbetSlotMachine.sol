@@ -13,11 +13,11 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
     using Address for address;
 
     struct Bet {
-        address player;
-        uint256 amount;
-        uint256 winAmount;
-        uint256 blockNumber;
+        address player; 
+        uint88 amount;
         bool isSettled;
+        uint128 blockNumber;
+        uint128 winAmount;        
     }
 
     /* ========== STATE VARIABLES ========== */
@@ -199,8 +199,8 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
         uint256 requestId = requestRandomWords();
 
         userBets[requestId].player = _msgSender();
-        userBets[requestId].amount = betAmount;
-        userBets[requestId].blockNumber = block.number;
+        userBets[requestId].amount = uint88(betAmount);
+        userBets[requestId].blockNumber = uint128(block.number);
 
         emit BetPlaced(betAmount, requestId, _msgSender());
 
@@ -317,7 +317,7 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
             return;
         }
 
-        bet.winAmount = winAmount;
+        bet.winAmount = uint128(winAmount);
         bet.isSettled = true;
 
         emit BetSettled(
@@ -373,7 +373,7 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
             "Coinbet Slots: Insufficient liqudity to payout bet"
         );
 
-        bet.winAmount = winAmount;
+        bet.winAmount = uint128(winAmount);
         bet.isSettled = true;
 
         emit BetRefunded(winAmount, requestId, bet.player);
