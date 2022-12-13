@@ -52,11 +52,6 @@ contract CoinbetHousePool is ICoinbetHousePool, ERC20, Ownable, Pausable {
         _;
     }
 
-    fallback() external payable {
-        protocolRewardsBalance += msg.value;
-        emit HousePoolDonation(msg.sender, msg.value);
-    }
-
     receive() external payable {
         protocolRewardsBalance += msg.value;
         emit HousePoolDonation(msg.sender, msg.value);
