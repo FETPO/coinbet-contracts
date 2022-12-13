@@ -408,7 +408,7 @@ describe("Slot Machine Tests", () => {
       coinbetSlotMachine
         .connect(accounts[1])
         .coinbet({ value: "1000000000000000000" })
-    ).revertedWith("Coinbet Slot Machine: Not enough to pay max payout");
+    ).revertedWith("Coinbet House Pool: Insufficient liquidity to payout bet");
   });
 
   it("should NOT be able to coinbet below minimum bet", async () => {

@@ -46,11 +46,6 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
             minBetAmount <= betAmount && betAmount <= maxBetAmount,
             "Coinbet Slot Machine: Invalid bet amount"
         );
-        require(
-            housePool.availableFundsForPayroll() >
-                betAmount * rewardMultipliers[0],
-            "Coinbet Slot Machine: Not enough to pay max payout"
-        );
         _;
     }
 
