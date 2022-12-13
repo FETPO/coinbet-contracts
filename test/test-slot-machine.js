@@ -447,7 +447,7 @@ describe("Slot Machine Tests", () => {
       coinbetGameExecutor
         .connect(accounts[1])
         .executeGameFromContract({ value: "1500000000000000000" })
-    ).revertedWith("Coinbet Slot Machine: Caller cannot be a contract");
+    ).revertedWith("Coinbet Slot Machine: Msg sender should be original caller");
   });
 
   it("should successfully update house pool balance after", async () => {

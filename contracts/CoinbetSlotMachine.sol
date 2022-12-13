@@ -369,7 +369,7 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
             "Coinbet Slots: Try requesting a refund later"
         );
         require(
-            address(this).balance >= winAmount,
+            housePool.poolBalance() >= winAmount,
             "Coinbet Slots: Insufficient liqudity to payout bet"
         );
 
