@@ -12,6 +12,12 @@ The repository contains contracts for a slot machine game, powered by Chainlink'
 can provide liquidity for paying rewards to players. Liquidity providers are also entitled to the profits of the slots, as they serve the role of
 the house. On the other side, players can execute rolls as long as they have enough balance and also withdraw their winnings at any time.
 
+## Contract Addresses
+
+Coinbet Token ($CFI) - https://polygonscan.com/token/0xc71A7e46266A9a78212a5d87b030F8D1Ce942Efd
+Coinbet House Pool - https://polygonscan.com/address/0x23D0C8628409532cfEACf9F397fDe0352224B4Af
+Coinbet Slot Machine - https://polygonscan.com/address/0xF8698158fF36fAc2F834bDc18203836D28eD6B3c
+
 ### Installation
 
 ```console
