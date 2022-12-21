@@ -149,12 +149,15 @@ contract CoinbetHousePool is ICoinbetHousePool, ERC20, Ownable, Pausable {
         view
         returns (uint256 amount)
     {
-        require(liquidity > 0, "Coinbet House Pool: Insuffcient Liquidity");
         uint256 balance = poolBalance;
         uint256 _totalSupplyPoolToken = totalSupply();
 
-        // slither-disable-next-line divide-before-multiply
-        amount = (liquidity * balance) / _totalSupplyPoolToken;
+        if (_totalSupplyPoolToken == 0) {
+            amount = 0;
+        } else {
+            // slither-disable-next-line divide-before-multiply
+            amount = (liquidity * balance) / _totalSupplyPoolToken;
+        }
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -352,6 +355,11 @@ contract CoinbetHousePool is ICoinbetHousePool, ERC20, Ownable, Pausable {
         poolMaxCap = newMaxCap;
 
         emit RewardPoolMaxCapUpdated(newMaxCap);
+    }
+
+    /// @notice Pauses the contract.
+    function pause() external onlyOwner {
+        _pause();
     }
 
     /// @notice Updates the Coinbet Slot Machine connected to the House Pool

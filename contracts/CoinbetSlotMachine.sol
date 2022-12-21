@@ -13,11 +13,11 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
     using Address for address;
 
     struct Bet {
-        address player; 
+        address player;
         uint88 amount;
         bool isSettled;
         uint128 blockNumber;
-        uint128 winAmount;        
+        uint128 winAmount;
     }
 
     /* ========== STATE VARIABLES ========== */
@@ -244,6 +244,11 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
         emit HousePoolUpdated(newHousePoolAddress);
     }
 
+    /// @notice Pauses the contract.
+    function pause() external onlyOwner {
+        _pause();
+    }
+
     /// @notice Updates the threshold of CFI token a player should have.
     /// @param newThreshold The new threshold amount in CFI tokens.
     function updateCoinbetTokenFeeWaiverThreshold(uint256 newThreshold)
@@ -304,15 +309,14 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
             uint256 winAmount
         ) = calculateWinAmount((betAmount - protocolFee), randomWords);
 
+        // Store the win amount in the struct
+        bet.winAmount = uint128(winAmount);
+
         // Check if there is enough liquidity to payout the pending bet or if bet is already settled
-        if (
-            bet.isSettled ||
-            housePool.availableFundsForPayroll() < winAmount
-        ) {
+        if (bet.isSettled || housePool.poolBalance() < winAmount) {
             return;
         }
 
-        bet.winAmount = uint128(winAmount);
         bet.isSettled = true;
 
         emit BetSettled(
@@ -355,10 +359,7 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
             winAmount > 0,
             "Coinbet Slots: Amount should be greater than zero"
         );
-        require(
-            !bet.isSettled,
-            "Coinbet Slots: Bet is already settled"
-        );
+        require(!bet.isSettled, "Coinbet Slots: Bet is already settled");
         require(
             block.number > bet.blockNumber + 43200,
             "Coinbet Slots: Try requesting a refund later"
