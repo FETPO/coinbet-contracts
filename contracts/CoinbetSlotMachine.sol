@@ -233,12 +233,16 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
         emit ProtocolFeeUpdated(newProtocolFeeBps);
     }
 
-    /// @notice Updates the roll fee deducted on every roll.
-    /// @param newHousePoolAddress The new roll fee in basis points.
+    /// @notice Updates the house pool address
+    /// @param newHousePoolAddress The new house pool address.
     function updateHousePoolAddress(address newHousePoolAddress)
         external
         onlyOwner
     {
+        require(
+            newHousePoolAddress != address(0),
+            "Coinbet Slot Machine: Cannot set address zero"
+        );
         housePool = ICoinbetHousePool(newHousePoolAddress);
 
         emit HousePoolUpdated(newHousePoolAddress);
@@ -357,16 +361,16 @@ contract CoinbetSlotMachine is ICoinbetGame, VRFv2Consumer, Ownable, Pausable {
         // Check if there is enough liquidity to payout the pending bet or if bet is already settled
         require(
             winAmount > 0,
-            "Coinbet Slots: Amount should be greater than zero"
+            "Coinbet Slot Machine: Amount should be greater than zero"
         );
         require(!bet.isSettled, "Coinbet Slots: Bet is already settled");
         require(
             block.number > bet.blockNumber + 43200,
-            "Coinbet Slots: Try requesting a refund later"
+            "Coinbet Slot Machine: Try requesting a refund later"
         );
         require(
             housePool.poolBalance() >= winAmount,
-            "Coinbet Slots: Insufficient liqudity to payout bet"
+            "Coinbet Slot Machine: Insufficient liqudity to payout bet"
         );
 
         bet.winAmount = uint128(winAmount);

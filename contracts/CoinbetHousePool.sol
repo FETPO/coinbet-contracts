@@ -104,7 +104,7 @@ contract CoinbetHousePool is ICoinbetHousePool, ERC20, Ownable, Pausable {
     }
 
     /// @notice Returns boolean if the epoch has ended
-    function hasEpochEnded() public view returns (bool) {
+    function hasEpochEnded() external view returns (bool) {
         return block.timestamp >= epochEndAt();
     }
 
@@ -422,7 +422,7 @@ contract CoinbetHousePool is ICoinbetHousePool, ERC20, Ownable, Pausable {
     /// where, liquidity providers have the option to withdraw their stake, as the funds are locked
     /// during the time the epoch is active. The function is callable by anyone - the first who calls it
     /// receives a $CFI token prize
-    function finalizeEpoch() public onlyEpochEnded {
+    function finalizeEpoch() external onlyEpochEnded {
         uint256 timeSinceEpochEnd = getCurrentTime() - epochEndAt();
         require(
             timeSinceEpochEnd > withdrawTimeWindowSeconds,
